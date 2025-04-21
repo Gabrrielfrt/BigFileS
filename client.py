@@ -90,13 +90,12 @@ class BigFileSClient:
 
     def show_help(self):
         print("\nComandos disponíveis:")
-        print("  mk <nó> <path> [DIR] - Criar arquivo/diretório")
+        print("  mk <nó> <path> [conteúdo|DIR] - Criar arquivo (com conteúdo) ou diretório")
         print("  ls <nó> <path> - Listar arquivos")
         print("  read <nó> <path> - Ler arquivo")
         print("  cp <nó> <origem> <destino> - Copiar arquivo")
         print("  rm <nó> <path> - Remover arquivo/diretório")
         print("  get <nó> <remoto> [local] - Baixar arquivo")
-        print("  send <nó> <local> <remoto> - Enviar arquivo")
         print("  nodes - Listar nós disponíveis")
         print("  exit - Sair")
 
@@ -109,8 +108,11 @@ class BigFileSClient:
             path = cmd_parts[2]
 
             if operation == 'mk':
+                #formato: mk <nó> <path> [conteúdo|DIR]
                 is_dir = len(cmd_parts) > 3 and cmd_parts[3].upper() == 'DIR'
-                command = f"MK|{path}|{'DIR' if is_dir else ''}"
+                content = ' '.join(cmd_parts[3:]) if not is_dir and len(cmd_parts) > 3 else ''
+
+                command = f"MK|{path}|{'DIR' if is_dir else 'FILE'}|{content}"
                 response = self.send_command(node_id, command)
                 print(response.decode() if response else "Sem resposta")
 
@@ -125,7 +127,7 @@ class BigFileSClient:
             elif operation == 'read':
                 command = f"READ|{path}"
                 response = self.send_command(node_id, command)
-                print(response.decode() if response else "Falha ao ler arquivo")
+                print(response.decode() if response else "Falha ao ler arquivo ou o arquivo está vazio")
 
             elif operation == 'cp':
                 if len(cmd_parts) < 4:
@@ -149,26 +151,7 @@ class BigFileSClient:
                         f.write(response)
                     print(f"Arquivo salvo como {local_path}")
                 else:
-                    print("Falha ao baixar arquivo")
-
-            elif operation == 'send':
-                if len(cmd_parts) < 4:
-                    raise ValueError("Falta caminho remoto")
-                remote_path = cmd_parts[3]
-                local_path = path
-                if not os.path.exists(local_path):
-                    raise FileNotFoundError(f"Arquivo local não encontrado: {local_path}")
-                
-                with open(local_path, 'rb') as f:
-                    file_data = f.read()
-                
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(5)
-                s.connect((self.nodes[node_id]['host'], self.nodes[node_id]['port']))
-                s.send(f"SEND|{remote_path}".encode())
-                s.send(file_data)
-                print(s.recv(1024).decode())
-                s.close()
+                    print("Falha ao baixar arquivo ou o arquivo está vazio")
 
         except ValueError as e:
             print(f"Erro de sintaxe: {e}")

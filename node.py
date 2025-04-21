@@ -36,6 +36,8 @@ class BigFileSNode:
         try:
             data = conn.recv(1024).decode().split('|')
             operation = data[0]
+            relative_path = data[1].lstrip('/')
+            full_path = os.path.join(self.root_dir, relative_path)
             
             # Todas as operações usam caminhos relativos ao root_dir
             relative_path = data[1].lstrip('/')  # Remove barras iniciais
@@ -47,11 +49,18 @@ class BigFileSNode:
                 return
 
             if operation == 'MK':
-                if len(data) > 2 and data[2] == 'DIR':
+                #formato: MK|path|TYPE|content
+                obj_type = data[2]  # DIR ou FILE
+                content = data[3] if len(data) > 3 else ''
+
+                if obj_type == 'DIR':
                     os.makedirs(full_path, exist_ok=True)
+                    conn.send("OK|Diretório criado".encode())
                 else:
-                    open(full_path, 'w').close()
-                conn.send("OK".encode())
+                    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+                    with open(full_path, 'w') as f:
+                        f.write(content)
+                    conn.send(f"OK|Arquivo criado com {len(content)} bytes".encode())
 
             elif operation == 'LS':
                 files = os.listdir(full_path)
