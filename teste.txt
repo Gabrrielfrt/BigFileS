@@ -1,1 +1,0 @@
-ERRO|[Errno 2] No such file or directory: 'node_storage/root/teste.txt'
